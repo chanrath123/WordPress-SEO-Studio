@@ -3838,8 +3838,11 @@ class WordPressSEOStudio(ctk.CTk):
                     f.write(f'@echo off\n')
                     f.write(f'title Updating WordPress SEO Studio...\n')
                     f.write(f'echo Waiting for application to close...\n')
-                    f.write(f'timeout /t 2 /nobreak > nul\n')
+                    # Force kill the process if it's still hanging
+                    f.write(f'taskkill /f /im python.exe /fi "WINDOWTITLE eq WordPress SEO Studio*" > nul 2>&1\n')
+                    f.write(f'timeout /t 3 /nobreak > nul\n')
                     f.write(f'echo Replacing file...\n')
+                    f.write(f'del /f /q "{current_file}"\n')
                     f.write(f'move /y "{temp_file}" "{current_file}"\n')
                     f.write(f'echo Restarting application...\n')
                     f.write(f'start "" "{sys.executable}" "{current_file}"\n')
