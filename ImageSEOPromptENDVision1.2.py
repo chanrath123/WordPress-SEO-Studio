@@ -3805,7 +3805,6 @@ class WordPressSEOStudio(ctk.CTk):
         """Downloads the new version and restarts the app automatically."""
         self._set_status("Initializing update process...")
         
-        # Show a single clear confirmation to the user
         if not messagebox.askyesno("New Update Available", 
                                    "A new version is ready to install.\n\n"
                                    "The application will restart automatically to complete the update.\n"
@@ -3823,7 +3822,7 @@ class WordPressSEOStudio(ctk.CTk):
                     raise RuntimeError(f"Download failed: HTTP {r.status_code}")
                 
                 new_content = r.content
-                if len(new_content) < 5000: # Safety: full script should be large
+                if len(new_content) < 5000:
                     raise RuntimeError("Downloaded file is incomplete.")
 
                 # 2. Paths
@@ -3846,7 +3845,6 @@ class WordPressSEOStudio(ctk.CTk):
                     f.write('echo.\n')
                     f.write('echo  [1/3] Waiting for application to exit...\n')
                     f.write('timeout /t 2 /nobreak > nul\n')
-                    # Kill specifically this app's process if it hasn't closed
                     f.write(f'taskkill /f /fi "WINDOWTITLE eq WordPress SEO Studio*" /t > nul 2>&1\n')
                     f.write('echo  [2/3] Installing new version...\n')
                     f.write(f'del /f /q "{current_file}" > nul 2>&1\n')
