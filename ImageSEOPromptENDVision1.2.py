@@ -3857,16 +3857,19 @@ class WordPressSEOStudio(ctk.CTk):
                     f.write(f'timeout /t 2 > nul\n')
                     f.write(f'exit\n')
                 
-                self.after(0, lambda: self._set_status("Update ready! Restarting..."))
-                time.sleep(1)
+                # DEBUG: Confirm batch file is written
+                self.after(0, lambda: messagebox.showinfo("Debug", "Step 1: Update downloaded and Batch file created successfully. Press OK to start the installation.", parent=self))
                 
-                # Run the batch file and exit the current process
-                subprocess.Popen([batch_file], shell=True)
-                self.after(0, self.quit)
+                # Run the batch file using a more direct Windows method
+                try:
+                    os.startfile(batch_file)
+                    self.after(0, self.quit)
+                except Exception as ex:
+                    self.after(0, lambda e=ex: messagebox.showerror("Update Error", f"Could not launch update script: {e}", parent=self))
                 
             except Exception as e:
                 msg = str(e)
-                self.after(0, lambda m=msg: messagebox.showerror("Update Error", f"Update failed: {m}", parent=self))
+                self.after(0, lambda m=msg: messagebox.showerror("Update Error", f"Update failed at download step: {m}", parent=self))
                 self.after(0, lambda: self.update_btn.configure(state="normal", text="✨ Update Failed"))
                 self.after(0, lambda: self._set_status("Update failed"))
 
