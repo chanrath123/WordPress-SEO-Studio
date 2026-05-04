@@ -3763,25 +3763,30 @@ class WordPressSEOStudio(ctk.CTk):
         threading.Thread(target=self._check_updates_background, daemon=True).start()
 
     def _check_updates_background(self):
-        """Checks for updates without freezing the UI."""
+        """Checks for updates without freezing the UI. Smart detection for Script vs EXE."""
         try:
-            # Short delay to let the app finish loading
             time.sleep(3)
-            # Use a session to avoid repeated connection overhead if needed
             response = requests.get(UPDATE_JSON_URL, timeout=10)
             if response.status_code == 200:
                 data = response.json()
                 remote_version = str(data.get("version", "1.0"))
-                download_url = data.get("url", "")
                 
-                # Simple robust version comparison (handles 1.9 vs 1.10)
+                # Detect if running as EXE or Script
+                is_frozen = getattr(sys, 'frozen', False)
+                
+                # Pick the correct URL from JSON based on user type
+                download_url = data.get("url_exe") if is_frozen else data.get("url_py")
+                
+                # Fallback to the old "url" field if specific ones aren't found
+                if not download_url:
+                    download_url = data.get("url", "")
+                
+                # Robust version comparison
                 def parse_v(v): return [int(x) for x in str(v).replace("v","").split(".") if x.isdigit()]
                 
                 if parse_v(remote_version) > parse_v(APP_VERSION) and download_url:
-                    # Update found! Update UI on main thread
                     self.after(0, lambda: self._show_update_alert(remote_version, download_url))
         except Exception:
-            # Silently ignore update check errors (no internet, wrong URL, etc.)
             pass
 
     def _show_update_alert(self, new_version, download_url):
@@ -3802,7 +3807,7 @@ class WordPressSEOStudio(ctk.CTk):
                 self.after(0, lambda: self._perform_auto_update(download_url))
 
     def _perform_auto_update(self, download_url):
-        """Downloads the new version and restarts the app automatically."""
+        """Downloads the new version and restarts the app automatically (Script & EXE compatible)."""
         self._set_status("Initializing update process...")
         
         if not messagebox.askyesno("New Update Available", 
@@ -3825,8 +3830,17 @@ class WordPressSEOStudio(ctk.CTk):
                 if len(new_content) < 5000:
                     raise RuntimeError("Downloaded file is incomplete.")
 
-                # 2. Paths
-                current_file = os.path.abspath(__file__)
+                # 2. Detect Environment (Script or EXE)
+                is_frozen = getattr(sys, 'frozen', False)
+                if is_frozen:
+                    # If running as EXE, the real path is sys.executable
+                    current_file = os.path.abspath(sys.executable)
+                    restart_cmd = f'start "" "{current_file}"'
+                else:
+                    # If running as Script, the path is __file__
+                    current_file = os.path.abspath(__file__)
+                    restart_cmd = f'start "" "{sys.executable}" "{current_file}"'
+                
                 temp_file = current_file + ".new"
                 
                 # 3. Save new content
@@ -3850,7 +3864,7 @@ class WordPressSEOStudio(ctk.CTk):
                     f.write(f'del /f /q "{current_file}" > nul 2>&1\n')
                     f.write(f'move /y "{temp_file}" "{current_file}" > nul 2>&1\n')
                     f.write('echo  [3/3] Restarting application...\n')
-                    f.write(f'start "" "{sys.executable}" "{current_file}"\n')
+                    f.write(f'{restart_cmd}\n')
                     f.write('exit\n')
                 
                 # Execute batch and quit immediately
