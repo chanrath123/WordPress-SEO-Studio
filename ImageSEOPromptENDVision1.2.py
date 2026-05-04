@@ -3795,11 +3795,11 @@ class WordPressSEOStudio(ctk.CTk):
             )
             self._set_status(f"New Update Available: v{new_version}!")
             
-            # Show a popup once
-            messagebox.showinfo("Update Available", 
+            # Show a confirmation popup
+            if messagebox.askyesno("Update Available", 
                                 f"A new version (v{new_version}) is available!\n\n"
-                                "Click the 'Update' button in the top bar to install it automatically.",
-                                parent=self)
+                                "Do you want to download and install it now?"):
+                self.after(0, lambda: self._perform_auto_update(download_url))
 
     def _perform_auto_update(self, download_url):
         """Downloads the new version and restarts the app."""
