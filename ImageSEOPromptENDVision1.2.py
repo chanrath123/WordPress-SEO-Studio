@@ -3807,7 +3807,7 @@ class WordPressSEOStudio(ctk.CTk):
                 self.after(0, lambda: self._perform_auto_update(download_url))
 
     def _perform_auto_update(self, download_url):
-        """Downloads the new version and restarts the app automatically (Script & EXE compatible)."""
+        """Downloads the new version and restarts the app automatically (Robust Script & EXE compatible)."""
         self._set_status("Initializing update process...")
         
         if not messagebox.askyesno("New Update Available", 
@@ -3822,22 +3822,25 @@ class WordPressSEOStudio(ctk.CTk):
         def worker():
             try:
                 # 1. Download new content
-                r = requests.get(download_url, timeout=45)
+                r = requests.get(download_url, timeout=60, stream=True)
                 if r.status_code != 200:
                     raise RuntimeError(f"Download failed: HTTP {r.status_code}")
                 
-                new_content = r.content
+                # Download with chunks to ensure completeness
+                buf = io.BytesIO()
+                for chunk in r.iter_content(chunk_size=8192):
+                    if chunk: buf.write(chunk)
+                new_content = buf.getvalue()
+                
                 if len(new_content) < 5000:
                     raise RuntimeError("Downloaded file is incomplete.")
 
                 # 2. Detect Environment (Script or EXE)
                 is_frozen = getattr(sys, 'frozen', False)
                 if is_frozen:
-                    # If running as EXE, the real path is sys.executable
                     current_file = os.path.abspath(sys.executable)
                     restart_cmd = f'start "" "{current_file}"'
                 else:
-                    # If running as Script, the path is __file__
                     current_file = os.path.abspath(__file__)
                     restart_cmd = f'start "" "{sys.executable}" "{current_file}"'
                 
@@ -3847,7 +3850,7 @@ class WordPressSEOStudio(ctk.CTk):
                 with open(temp_file, "wb") as f:
                     f.write(new_content)
                 
-                # 4. Generate Professional Update Script
+                # 4. Generate ROBUST Update Script
                 batch_file = os.path.join(tempfile.gettempdir(), "wp_seo_update.bat")
                 with open(batch_file, "w") as f:
                     f.write('@echo off\n')
@@ -3857,13 +3860,21 @@ class WordPressSEOStudio(ctk.CTk):
                     f.write('echo    UPDATING WORDPRESS SEO STUDIO TO v' + APP_VERSION + '\n')
                     f.write('echo  ============================================\n')
                     f.write('echo.\n')
-                    f.write('echo  [1/3] Waiting for application to exit...\n')
-                    f.write('timeout /t 2 /nobreak > nul\n')
-                    f.write(f'taskkill /f /fi "WINDOWTITLE eq WordPress SEO Studio*" /t > nul 2>&1\n')
-                    f.write('echo  [2/3] Installing new version...\n')
+                    f.write('echo  [1/3] Waiting for application to release resources...\n')
+                    f.write('taskkill /f /fi "WINDOWTITLE eq WordPress SEO Studio*" /t > nul 2>&1\n')
+                    f.write('timeout /t 5 /nobreak > nul\n')
+                    
+                    f.write('echo  [2/3] Installing new version (Retrying if needed)...\n')
+                    f.write(':retry_del\n')
                     f.write(f'del /f /q "{current_file}" > nul 2>&1\n')
+                    f.write(f'if exist "{current_file}" (timeout /t 2 > nul & goto retry_del)\n')
+                    
+                    f.write(':retry_move\n')
                     f.write(f'move /y "{temp_file}" "{current_file}" > nul 2>&1\n')
-                    f.write('echo  [3/3] Restarting application...\n')
+                    f.write(f'if not exist "{current_file}" (timeout /t 2 > nul & goto retry_move)\n')
+                    
+                    f.write('echo  [3/3] Update successful! Restarting...\n')
+                    f.write('timeout /t 2 /nobreak > nul\n')
                     f.write(f'{restart_cmd}\n')
                     f.write('exit\n')
                 
@@ -3875,7 +3886,7 @@ class WordPressSEOStudio(ctk.CTk):
                 
             except Exception as e:
                 err_msg = str(e)
-                self.after(0, lambda: messagebox.showerror("Update Error", f"Installation failed: {err_msg}\n\nPlease try again later.", parent=self))
+                self.after(0, lambda: messagebox.showerror("Update Error", f"Installation failed: {err_msg}\n\nPlease check your internet and try again.", parent=self))
                 self.after(0, lambda: self.update_btn.configure(state="normal", text="✨ Update Failed"))
 
         threading.Thread(target=worker, daemon=True).start()
