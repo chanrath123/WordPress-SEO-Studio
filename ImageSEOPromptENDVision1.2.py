@@ -3839,7 +3839,7 @@ class WordPressSEOStudio(ctk.CTk):
                     f.write(f'echo Replacing file...\n')
                     f.write(f'move /y "{temp_file}" "{current_file}"\n')
                     f.write(f'echo Restarting application...\n')
-                    f.write(f'start "" python "{current_file}"\n')
+                    f.write(f'start "" "{sys.executable}" "{current_file}"\n')
                     f.write(f'echo Update Complete!\n')
                     f.write(f'exit\n')
                 
