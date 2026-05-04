@@ -80,11 +80,10 @@ ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
 
 # ── Update Configuration ──────────────────────────────────────────────────────
-APP_VERSION = "1.5"
+APP_VERSION = "1.4"
 # This is the URL where the tool will check for updates.
 # You can host a JSON file on GitHub Gist or your server.
-# Format: {"version": "1.2", "url": "https://.../ImageSEOPromptENDVision1.2.py"}
-UPDATE_JSON_URL = "https://gist.githubusercontent.com/username/gist_id/raw/version.json"
+UPDATE_JSON_URL = "https://raw.githubusercontent.com/chanrath123/WordPress-SEO-Studio/main/version.json"
 # ──────────────────────────────────────────────────────────────────────────────
 
 
@@ -361,6 +360,16 @@ class Btn(ctk.CTkButton):
             font=ctk.CTkFont(family="Segoe UI", size=12, weight="bold"),
             **kw,
         )
+
+    def configure(self, **kw):
+        if "kind" in kw:
+            kind = kw.pop("kind")
+            fg, hv, bd = self._PAL.get(kind, self._PAL["blue"])
+            kw["fg_color"] = fg
+            kw["hover_color"] = hv
+            kw["border_width"] = 1 if bd else 0
+            kw["border_color"] = bd or fg
+        super().configure(**kw)
 
 
 def field_label(master, text):
@@ -3740,6 +3749,12 @@ class WordPressSEOStudio(ctk.CTk):
         self.minsize(1200,720); self.configure(fg_color=T.APP_BG)
         self.api_keys = {"together": "", "openai": ""}
         self.key_manager = APIKeyManager()
+        
+        # Load saved keys on startup
+        saved_keys = self.key_manager.load()
+        if saved_keys.get("together") or saved_keys.get("openai"):
+            self.api_keys = saved_keys
+            
         self._build(); self._update_badge()
         if self.api_keys.get("together") or self.api_keys.get("openai"):
             self.image_tab.init_client()
@@ -3769,9 +3784,10 @@ class WordPressSEOStudio(ctk.CTk):
     def _show_update_alert(self, new_version, download_url):
         """Shows the update button and a status message."""
         if hasattr(self, "update_btn"):
-            self.update_btn.pack(side="right", padx=12, pady=9)
             self.update_btn.configure(
-                text=f"✨ Update to v{new_version}",
+                text="Please Fixed Update",
+                fg_color=T.YELLOW,
+                hover_color=T.YELLOW_H,
                 command=lambda: self._perform_auto_update(download_url)
             )
             self._set_status(f"New Update Available: v{new_version}!")
@@ -3882,10 +3898,9 @@ class WordPressSEOStudio(ctk.CTk):
         ctk.CTkLabel(topbar,text="SEO Formatter  ·  Image Crop  ·  AI Image SEO  ·  Yoast Fields  ·  AI SEO Fields",font=ctk.CTkFont("Segoe UI",10),text_color="#3d5a7a").pack(side="left",padx=(0,16))
         Btn(topbar,"⚙  API Settings",self._open_api_settings,"cyan",136,30).pack(side="right",padx=12,pady=9)
         
-        # New Update Button (hidden by default)
-        self.update_btn = Btn(topbar, "✨ Update Available", lambda: None, "yellow", 160, 30)
-        self.update_btn.pack_forget() 
-
+        # New Update Button (always visible)
+        self.update_btn = Btn(topbar, "Tools Auto", lambda: None, "blue", 130, 30)
+        self.update_btn.pack(side="right", padx=12, pady=9)
         self.badge=ctk.CTkLabel(topbar,text="○  API not configured",font=ctk.CTkFont("Segoe UI",11),text_color="#4a6380")
         self.badge.pack(side="right",padx=(0,4))
 
