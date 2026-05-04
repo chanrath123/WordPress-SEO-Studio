@@ -3802,76 +3802,69 @@ class WordPressSEOStudio(ctk.CTk):
                 self.after(0, lambda: self._perform_auto_update(download_url))
 
     def _perform_auto_update(self, download_url):
-        """Downloads the new version and restarts the app."""
-        if not messagebox.askyesno("Confirm Update", 
-                                   "The tool will download the new version and restart.\n\n"
-                                   "Do you want to proceed?", parent=self):
+        """Downloads the new version and restarts the app automatically."""
+        self._set_status("Initializing update process...")
+        
+        # Show a single clear confirmation to the user
+        if not messagebox.askyesno("New Update Available", 
+                                   "A new version is ready to install.\n\n"
+                                   "The application will restart automatically to complete the update.\n"
+                                   "Do you want to proceed now?", parent=self):
             return
 
-        self._set_status("Downloading update...")
-        self.update_btn.configure(state="disabled", text="⏳ Updating...")
+        self._set_status("Downloading new version... Please wait.")
+        self.update_btn.configure(state="disabled", text="⏳ Installing...")
 
         def worker():
             try:
-                # 1. Download new file content
-                r = requests.get(download_url, timeout=30)
+                # 1. Download new content
+                r = requests.get(download_url, timeout=45)
                 if r.status_code != 200:
-                    raise RuntimeError(f"Download failed (HTTP {r.status_code})")
+                    raise RuntimeError(f"Download failed: HTTP {r.status_code}")
                 
                 new_content = r.content
-                if len(new_content) < 1000: # Safety check: script shouldn't be too small
-                    raise RuntimeError("Downloaded file seems too small or invalid.")
+                if len(new_content) < 5000: # Safety: full script should be large
+                    raise RuntimeError("Downloaded file is incomplete.")
 
-                # 2. Get current file path
+                # 2. Paths
                 current_file = os.path.abspath(__file__)
-                
-                # 3. Save new content to a temporary file first
                 temp_file = current_file + ".new"
+                
+                # 3. Save new content
                 with open(temp_file, "wb") as f:
                     f.write(new_content)
                 
-                # 4. Create a small batch script to handle replacement and restart
-                # This is necessary because we can't easily replace the file while it's in use
-                # or ensure the restart happens after we close.
-                batch_file = os.path.join(tempfile.gettempdir(), "update_seo_studio.bat")
+                # 4. Generate Professional Update Script
+                batch_file = os.path.join(tempfile.gettempdir(), "wp_seo_update.bat")
                 with open(batch_file, "w") as f:
-                    f.write(f'@echo off\n')
-                    f.write(f'title Updating WordPress SEO Studio...\n')
-                    f.write(f'echo ========================================\n')
-                    f.write(f'echo  WORDPRESS SEO STUDIO AUTO-UPDATER\n')
-                    f.write(f'echo ========================================\n')
-                    f.write(f'echo Waiting for application to close...\n')
-                    f.write(f'taskkill /f /im python.exe /fi "WINDOWTITLE eq WordPress SEO Studio*" > nul 2>&1\n')
-                    f.write(f'timeout /t 3 /nobreak > nul\n')
-                    f.write(f'echo Replacing file...\n')
-                    f.write(f'del /f /q "{current_file}"\n')
-                    f.write(f'move /y "{temp_file}" "{current_file}"\n')
-                    f.write(f'if errorlevel 1 (\n')
-                    f.write(f'    echo ERROR: Could not replace the file! Check permissions.\n')
-                    f.write(f'    pause\n')
-                    f.write(f'    exit\n')
-                    f.write(f')\n')
-                    f.write(f'echo Restarting application...\n')
+                    f.write('@echo off\n')
+                    f.write('title WordPress SEO Studio - Updating...\n')
+                    f.write('echo.\n')
+                    f.write('echo  ============================================\n')
+                    f.write('echo    UPDATING WORDPRESS SEO STUDIO TO v' + APP_VERSION + '\n')
+                    f.write('echo  ============================================\n')
+                    f.write('echo.\n')
+                    f.write('echo  [1/3] Waiting for application to exit...\n')
+                    f.write('timeout /t 2 /nobreak > nul\n')
+                    # Kill specifically this app's process if it hasn't closed
+                    f.write(f'taskkill /f /fi "WINDOWTITLE eq WordPress SEO Studio*" /t > nul 2>&1\n')
+                    f.write('echo  [2/3] Installing new version...\n')
+                    f.write(f'del /f /q "{current_file}" > nul 2>&1\n')
+                    f.write(f'move /y "{temp_file}" "{current_file}" > nul 2>&1\n')
+                    f.write('echo  [3/3] Restarting application...\n')
                     f.write(f'start "" "{sys.executable}" "{current_file}"\n')
-                    f.write(f'echo Update Complete!\n')
-                    f.write(f'timeout /t 2 > nul\n')
-                    f.write(f'exit\n')
+                    f.write('exit\n')
                 
-                # DEBUG: Confirm batch file is written
-                self.after(0, lambda: messagebox.showinfo("Debug", "Step 1: Update downloaded and Batch file created successfully. Press OK to start the installation.", parent=self))
-                
-                # Run the batch file using a more direct Windows method
-                try:
-                    os.startfile(batch_file)
-                    self.after(0, self.quit)
-                except Exception as ex:
-                    self.after(0, lambda e=ex: messagebox.showerror("Update Error", f"Could not launch update script: {e}", parent=self))
+                # Execute batch and quit immediately
+                self.after(0, lambda: self._set_status("Restarting to apply update..."))
+                time.sleep(0.5)
+                os.startfile(batch_file)
+                self.after(0, self.quit)
                 
             except Exception as e:
-                msg = str(e)
-                self.after(0, lambda m=msg: messagebox.showerror("Update Error", f"Update failed at download step: {m}", parent=self))
+                err_msg = str(e)
+                self.after(0, lambda: messagebox.showerror("Update Error", f"Installation failed: {err_msg}\n\nPlease try again later.", parent=self))
                 self.after(0, lambda: self.update_btn.configure(state="normal", text="✨ Update Failed"))
-                self.after(0, lambda: self._set_status("Update failed"))
 
         threading.Thread(target=worker, daemon=True).start()
 
