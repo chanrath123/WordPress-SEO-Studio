@@ -80,7 +80,7 @@ ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
 
 # ── Update Configuration ──────────────────────────────────────────────────────
-APP_VERSION = "1.2"
+APP_VERSION = "1.3"
 # This is the URL where the tool will check for updates.
 # You can host a JSON file on GitHub Gist or your server.
 # Format: {"version": "1.2", "url": "https://.../ImageSEOPromptENDVision1.2.py"}
