@@ -3898,8 +3898,8 @@ class WordPressSEOStudio(ctk.CTk):
         ctk.CTkLabel(topbar,text="SEO Formatter  ·  Image Crop  ·  AI Image SEO  ·  Yoast Fields  ·  AI SEO Fields",font=ctk.CTkFont("Segoe UI",10),text_color="#3d5a7a").pack(side="left",padx=(0,16))
         Btn(topbar,"⚙  API Settings",self._open_api_settings,"cyan",136,30).pack(side="right",padx=12,pady=9)
         
-        # New Update Button (always visible)
-        self.update_btn = Btn(topbar, "Tools Auto", lambda: None, "blue", 130, 30)
+        # New Update Button (always visible, showing current version)
+        self.update_btn = Btn(topbar, f"Tools Auto v{APP_VERSION}", lambda: None, "blue", 145, 30)
         self.update_btn.pack(side="right", padx=12, pady=9)
         self.badge=ctk.CTkLabel(topbar,text="○  API not configured",font=ctk.CTkFont("Segoe UI",11),text_color="#4a6380")
         self.badge.pack(side="right",padx=(0,4))
