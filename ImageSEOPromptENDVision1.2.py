@@ -80,7 +80,7 @@ ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
 
 # ── Update Configuration ──────────────────────────────────────────────────────
-APP_VERSION = "2.1"
+APP_VERSION = "2.0"
 # This is the URL where the tool will check for updates.
 # You can host a JSON file on GitHub Gist or your server.
 UPDATE_JSON_URL = "https://raw.githubusercontent.com/chanrath123/WordPress-SEO-Studio/main/version.json"
@@ -3774,7 +3774,10 @@ class WordPressSEOStudio(ctk.CTk):
                 remote_version = str(data.get("version", "1.0"))
                 download_url = data.get("url", "")
                 
-                if remote_version > APP_VERSION and download_url:
+                # Simple robust version comparison (handles 1.9 vs 1.10)
+                def parse_v(v): return [int(x) for x in str(v).replace("v","").split(".") if x.isdigit()]
+                
+                if parse_v(remote_version) > parse_v(APP_VERSION) and download_url:
                     # Update found! Update UI on main thread
                     self.after(0, lambda: self._show_update_alert(remote_version, download_url))
         except Exception:
